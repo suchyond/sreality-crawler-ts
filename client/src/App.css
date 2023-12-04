@@ -40,6 +40,7 @@
 .Pagination {
   padding: 1em;
   bottom: 0px;
+  margin: 1em;
 }
 
 .Pag-sep {
@@ -52,6 +53,19 @@
 
 .Entry {
   padding: 1em;
+}
+
+
+.ActionBtns {
+  margin: 1em;
+}
+
+.NumOfEntriesSelect {
+  width: 10em;
+}
+
+.NumOfEntriesInputGroup {
+  width: 25em !important;
 }
 
 /*.Entry img{

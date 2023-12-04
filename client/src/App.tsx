@@ -1,19 +1,28 @@
-import React, { Reducer, useEffect } from 'react';
+import React, { Reducer, useEffect, useRef } from 'react';
 import './App.css';
 import { List } from './List';
 import { FlatInfo } from './flat-info';
+import Button from 'react-bootstrap/Button';
+import Pagination from 'react-bootstrap/Pagination';
+import Stack from 'react-bootstrap/Stack';
+import Form from 'react-bootstrap/Form';
+import InputGroup from 'react-bootstrap/InputGroup';
 
 declare namespace App {
   interface State {
     list: any[];
     entriesPerPage: number;
     page: number;
+    numOfPagesToDownload: number;
   }
   type Action = {
     type: "prev" | "next",
   } | {
     type: "updateList",
     payload: Array<FlatInfo>
+  } | {
+    type: "crawlNumOfPages",
+    payload: number
   }
 }
 
@@ -43,7 +52,7 @@ function App() {
       } // case
     } //switch
     return state;
-  }, { list: [], entriesPerPage: 10, page: 1});
+  }, { list: [], entriesPerPage: 10, page: 1, numOfPagesToDownload: 1});
   
   const crawl = React.useCallback(() => {
     fetch("/api/crawl", {
@@ -102,19 +111,47 @@ function App() {
   return (
     <div className="App">
       <div>
-        <button onClick={() => { crawl(); }}>Crawl</button>
+        {/*<button onClick={() => { crawl(); }}>Crawl</button>
         <button onClick={() => { processData(); }}>Process</button>
-        <button onClick={() => { refreshList(); }}>Show list 7</button>
+        <button  onClick={() => { refreshList(); }}>Show list 2</button>*/}
+        <Stack direction="horizontal" gap={3} className='ActionBtns'>
+          <Button variant="primary" onClick={() => { crawl(); }}>{'1)'} Crawl</Button>
+          <InputGroup className='NumOfEntriesInputGroup'>
+            <InputGroup.Text>Number of entries to download:</InputGroup.Text>
+            <Form.Select
+              defaultValue={'540'}
+              className='NumOfEntriesSelect'
+              onChange={(evt) => {
+                console.log('Form.Select val onChange', evt);
+                console.log('Form.Select val onChange', evt && evt.target && evt.target.value);
+                const val = evt && evt.target && evt.target.value;
 
-        <div>Page: {state.page}</div>
+                const numOfEntries = Number(val);
+                const numberOfPages = numOfEntries/60;
+                dispatch({type: 'crawlNumOfPages', payload: numberOfPages});
+              }}
+            >
+              <option>60</option>
+              <option>120</option>
+              <option>240</option>
+              <option>480</option>
+              <option>540</option>
+            </Form.Select>
+          </InputGroup>
+
+          <Button variant="secondary" onClick={() => { processData(); }}>{'2)'} Process</Button>
+          <Button variant="secondary" onClick={() => { refreshList(); }}>{'3)'} Show list 1</Button>
+        </Stack>
+
+        <Pagination className='Pagination'>
+          {state.page > 1 && (<Pagination.Prev onClick={() => { dispatch({type: 'prev'}); }}>{'<'} Previous page</Pagination.Prev>)}
+          {/*<span className='Pag-sep'/>*/}
+          <Pagination.Item active>{state.page}</Pagination.Item>
+          <Pagination.Next onClick={() => { dispatch({type: 'next'}); }}>Next page {'>'}</Pagination.Next>
+        </Pagination>
 
         <List list={state.list}/>
 
-        <div className='Pagination'>
-          {state.page > 1 && (<button onClick={() => { dispatch({type: 'prev'}); }}> {'<'} Previous page</button>)}
-          <span className='Pag-sep'/>
-          <button onClick={() => { dispatch({type: 'next'}); }}>Next page {'>'}</button>
-        </div>
       </div>
     </div>
   );
