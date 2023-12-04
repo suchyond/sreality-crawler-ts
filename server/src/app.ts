@@ -123,8 +123,6 @@ function processPage(page: number, res: Response) {
       } catch (err) {
         console.log(err);
       }
-      
-      rawData
     }
     // res.send(JSON.stringify(val.rows));
   });
