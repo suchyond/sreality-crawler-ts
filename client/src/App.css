@@ -36,3 +36,24 @@
     transform: rotate(360deg);
   }
 }
+
+.Pagination {
+  padding: 1em;
+  bottom: 0px;
+}
+
+.Pag-sep {
+  margin-left: 1em;
+}
+
+.List {
+  padding: 3em;
+}
+
+.Entry {
+  padding: 1em;
+}
+
+/*.Entry img{
+  ali
+}*/

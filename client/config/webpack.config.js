@@ -245,7 +245,7 @@ module.exports = function (webpackEnv) {
     infrastructureLogging: {
       level: 'none',
     },
-    optimization: {
+    /*optimization: {
       minimize: isEnvProduction,
       minimizer: [
         // This is only used in production mode
@@ -291,7 +291,7 @@ module.exports = function (webpackEnv) {
         // This is only used in production mode
         new CssMinimizerPlugin(),
       ],
-    },
+    },*/
     resolve: {
       // This allows you to set a fallback for where webpack should look for modules.
       // We placed these paths second because we want `node_modules` to "win"
