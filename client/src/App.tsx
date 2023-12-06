@@ -13,8 +13,17 @@ import { Status, StatusInfo } from './Status';
 declare namespace App {
   interface State {
     list: any[];
+    /**
+     * Entries per page that will be displayed
+     */
     entriesPerPage: number;
+    /**
+     * Currently displayed page
+     */
     displayedPage: number;
+    /**
+     * Number of pages, that will be downloaded
+     */
     numOfPagesToDownload: number;
     status?: Status;
     crawlStatus?: CrawlStatus;
@@ -35,6 +44,11 @@ declare namespace App {
     payload: CrawlStatus
   };
 }
+
+const NUMBER_OF_ENTRIES_PER_PAGE = 60;
+const NUMBER_OF_PAGES_OPTIONS = [1, 2, 4, 8, 9];
+const CRAWLER_DEFAULT_NUM_OF_PAGES = 9;
+
 
 function App() {
   const [state, dispatch] = React.useReducer<Reducer<App.State, App.Action>>((state, action) => {
@@ -80,7 +94,8 @@ function App() {
       } // case
     } //switch
     return state;
-  }, { list: [], entriesPerPage: 10, displayedPage: 1, numOfPagesToDownload: 1 });
+  }, { list: [], entriesPerPage: 10, displayedPage: 1,
+      numOfPagesToDownload: CRAWLER_DEFAULT_NUM_OF_PAGES });
 
   const getStatus = useCallback(() => {
     fetch(`/api/status`).then((resp) => {
@@ -170,21 +185,22 @@ function App() {
         <Stack direction="horizontal" gap={3} className="ActionBtns" data-bs-theme="dark">
           <Button variant="primary" onClick={() => { crawlAndProcess(); }}>Crawl and process flats</Button>
           <InputGroup className='NumOfEntriesInputGroup'>
-            <InputGroup.Text>Number of entries to download:</InputGroup.Text>
+            <InputGroup.Text>Number of entries/pages to download:</InputGroup.Text>
             <Form.Select
-              defaultValue={'540'}
+              defaultValue={CRAWLER_DEFAULT_NUM_OF_PAGES}
               className='NumOfEntriesSelect'
               onChange={(evt) => {
-                console.log('Form.Select val onChange', evt);
+                console.log('Form.Select evt onChange', evt);
                 console.log('Form.Select val onChange', evt && evt.target && evt.target.value);
                 const val = evt && evt.target && evt.target.value;
 
-                const numOfEntries = Number(val);
-                const numberOfPages = numOfEntries/60;
+                const numberOfPages = Number(val);
                 dispatch({type: 'crawlNumOfPages', payload: numberOfPages});
               }}
             >
-              {[60, 120, 240, 480, 540].map((num) => <option>{num}</option>)}
+              { NUMBER_OF_PAGES_OPTIONS.map((numOfPages) => <option
+                  value={numOfPages}>{(numOfPages * NUMBER_OF_ENTRIES_PER_PAGE) + '/' + numOfPages}</option>)
+              }
             </Form.Select>
           </InputGroup>
 
