@@ -164,12 +164,10 @@ function App() {
     crawlerRef.current.crawler.start(state.numOfPagesToDownload);
   }, [state.numOfPagesToDownload, processData]);
 
-
-
   return (
     <div className="App">
-      <div>
-        <Stack direction="horizontal" gap={3} className='ActionBtns'>
+      <div className="UpperBar">
+        <Stack direction="horizontal" gap={3} className="ActionBtns" data-bs-theme="dark">
           <Button variant="primary" onClick={() => { crawlAndProcess(); }}>Crawl and process flats</Button>
           <InputGroup className='NumOfEntriesInputGroup'>
             <InputGroup.Text>Number of entries to download:</InputGroup.Text>
@@ -192,32 +190,33 @@ function App() {
 
           <Button variant="outline-secondary" size="sm" onClick={() => { processData(); }}>Process</Button>
           <Button variant="outline-secondary" size="sm" onClick={() => { refreshList(); }}>Refresh list</Button>
+
+          <Pagination className='Pagination'>
+            <Pagination.Prev
+                disabled={state.displayedPage < 2}
+                onClick={() => { dispatch({type: 'prev'}); }}
+            >{'<'} Previous page</Pagination.Prev>
+
+            <Pagination.Item active>{state.displayedPage}</Pagination.Item>
+
+            <Pagination.Next
+              disabled={!(state.status && state.status.flatCount != null && 
+                ((state.displayedPage * state.entriesPerPage)  < state.status.flatCount ))}
+              onClick={() => { dispatch({type: 'next'}); }}
+            >Next page {'>'}</Pagination.Next>
+          </Pagination>
         </Stack>
-
-        <Pagination className='Pagination'>
-          <Pagination.Prev
-              disabled={state.displayedPage < 2}
-              onClick={() => { dispatch({type: 'prev'}); }}
-          >{'<'} Previous page</Pagination.Prev>
-
-          <Pagination.Item active>{state.displayedPage}</Pagination.Item>
-
-          <Pagination.Next
-            disabled={!(state.status && state.status.flatCount != null && 
-              ((state.displayedPage * state.entriesPerPage)  < state.status.flatCount ))}
-            onClick={() => { dispatch({type: 'next'}); }}
-          >Next page {'>'}</Pagination.Next>
-          
-        </Pagination>
 
         <div className='Status'>Status:{<StatusInfo
           status={state.status}
           crawlStatus={state.crawlStatus}
         />}</div>
-
-        <List list={state.list}/>
-
       </div>
+
+      <div className="List">
+        <List list={state.list}/>
+      </div>
+
     </div>
   );
 }
