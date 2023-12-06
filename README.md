@@ -1,4 +1,14 @@
-This repo is based on the following article [Docker, Postgres, Node, Typescript Setup](https://dev.to/chandrapantachhetri/docker-postgres-node-typescript-setup-47db) article.
+Demo Crawler with flats and pagination.
+
+Uses:
+- React
+- Bootstrap
+
+- Express for back-end
+
+- Docker
+
+
 
 Note:
 
@@ -18,5 +28,9 @@ For front-end client development mode with live reloading, see client README.md 
 - Select how many flats should be processed.
 - Click "Crawl and process flats" button.
 - Wait for downloading and processing to complete,
-  flats will be shown automatically when the processing is finished
+  flats will be shown automatically when the processing is finished.
+
+# References:
+
+This repo is based on the following article [Docker, Postgres, Node, Typescript Setup](https://dev.to/chandrapantachhetri/docker-postgres-node-typescript-setup-47db) article.
 
