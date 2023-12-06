@@ -1,6 +1,12 @@
+export interface CrawlError {
+  page: number;
+  err: any;
+}
+
 export interface CrawlStatus {
   crawlingPage?: number;
   crawlingState?: 'done' | 'waiting' | 'downloading';
+  errors?: CrawlError[];
 }
 
 export interface CrawlerConfig {
@@ -50,21 +56,37 @@ export class CrawlerTimer {
               });
             } else {
               // TODO: Finished
-              this.config.dispatch({
-                type: "updateCrawlStatus",
-                payload: {crawlingPage: this.page, crawlingState: 'done'}
-              });
+              setTimeout(this.finishCrawl, this.config.waitTimeMs);
             }
           });
         } else {
           // Not OK status
         }
         
+      }).catch((err) => {
+        console.warn('Crawling page '+this.page+' failed!', err);
+        const nextStep = (this.page < this.config.numOfPagesToDownload) ?
+          this.nextCrawl :
+          this.finishCrawl;
+  
+          this.config.dispatch({
+            type: "updateCrawlStatus",
+            payload: {crawlingPage: this.page, crawlingState: 'waiting',
+                errors: [{page: this.page, err}]}
+          });
+          setTimeout(nextStep, this.config.waitTimeMs);
       });
     };
 
     private nextCrawl = () => {
       this.page++;
       this.crawl();
+    };
+
+    private finishCrawl = () => {
+      this.config.dispatch({
+        type: "updateCrawlStatus",
+        payload: {crawlingPage: this.page, crawlingState: 'done'}
+      });
     }
 }

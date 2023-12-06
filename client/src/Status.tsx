@@ -16,6 +16,7 @@ export const StatusInfo = ( props: {
     crawlStatus?: CrawlStatus
 }) => {
     let statusMsg = '';
+    let errorMsg: JSX.Element | null = null;
 
     if (props.status) {
       if (props.status.error) {
@@ -29,14 +30,25 @@ export const StatusInfo = ( props: {
           statusMsg += ' Downloaded pages: ' + props.status.rawCount;
         }
       }
+    }
 
-      if (props.crawlStatus && props.crawlStatus.crawlingPage) {
+    if (props.crawlStatus) {
+      if (props.crawlStatus.crawlingPage) {
         statusMsg += ' Crawling page: ' + props.crawlStatus.crawlingPage;
       }
 
-      if (props.crawlStatus && props.crawlStatus.crawlingState) {
+      if (props.crawlStatus.crawlingState) {
         statusMsg += ' Crawling state: ' + props.crawlStatus.crawlingState;
       }
+
+      if (props.crawlStatus.errors) {
+        errorMsg = <> Crawling errors page #: {
+            props.crawlStatus.errors.map((err, idx) => <span
+                key={err.page+'-'+idx}
+                title={JSON.stringify(err.err)}
+            >{err.page}</span>) 
+        }</>;
+      }
     }
-    return <span className='StatusInfo'>{ statusMsg }</span>;
+    return <span className='StatusInfo'>{ statusMsg }{ errorMsg }</span>;
 };

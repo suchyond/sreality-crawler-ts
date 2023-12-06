@@ -72,10 +72,15 @@ function App() {
         };
       } // case
       case "updateCrawlStatus": {
-        return {
+        const newState = {
           ...state,
           crawlStatus: action.payload
         };
+        if (state.crawlStatus && state.crawlStatus.errors && action.payload.errors) {
+          const newErrors = [...state.crawlStatus.errors, ...action.payload.errors];
+          newState.crawlStatus.errors = newErrors;
+        }
+        return newState;
       } // case
       case "prev": {
         if (state.displayedPage > 1) {

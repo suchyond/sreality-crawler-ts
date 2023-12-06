@@ -52,6 +52,7 @@ function initializeDbIfNeeded() {
         CREATE TABLE public.flats (
           id SERIAL PRIMARY KEY,
           name text,
+          source_page integer,
           image_url text
         );
         CREATE TABLE public.raw_flat_pages (
@@ -97,7 +98,7 @@ const getStatus = (req: Request, res: Response, next: NextFunction) => {
   const limit = req.query.limit || 10;
   const offset = req.query.offset || 0;
   pool.query(`SELECT name, image_url FROM flats ORDER BY flats.id LIMIT ${limit} OFFSET ${offset}`).then((val) => {
-    console.log("rowCoung:" + val.rowCount + '\n')
+    console.log(`List flats (limit:${limit} offset:${offset}): rowCount: ${val.rowCount}`);
     res.send(val.rows);
   }).catch(next);
 });
@@ -106,58 +107,48 @@ function getUrl(page: number) {
   return `https://www.sreality.cz/api/en/v2/estates?category_main_cb=1&category_type_cb=1&page=${page}&per_page=60&tms=1701176375237`;
 }
 
-function crawl(page: number, res: Response) {
+async function crawl(page: number, res: Response) {
   const url = getUrl(page);
-  fetch(url).then((respCrawl) => {
-    respCrawl.text().then((respCrawlTxt) => {
-      console.log(`Craw page: ${url}\n`);
-      console.log(`Craw data: ${respCrawlTxt}\n`);
-      pool.query('INSERT INTO raw_flat_pages (id,raw_data) VALUES ($1, $2)'+
-          ' ON CONFLICT (id) DO UPDATE SET raw_data = $2',
-          [page, respCrawlTxt]).then((val) => {
-        console.log("rowCoung:" + val.rowCount + '\n');
-        // res.send(JSON.stringify(val.rows));
-      });
-    })
-  });
-  /*https.get(url, (res) => {
-    res.
-  });*/
+  const respCrawl = await fetch(url);
+  const respCrawlTxt = await respCrawl.text();
+  console.log(`Craw page: ${url}\n`);
+  const val = await pool.query('INSERT INTO raw_flat_pages (id,raw_data) VALUES ($1, $2)' +
+    ' ON CONFLICT (id) DO UPDATE SET raw_data = $2',
+    [page, respCrawlTxt]);
+  console.log(`Crawl page: ${page} rowCount:` + val.rowCount + '\n');
 }
 
-function processPage(page: number, res: Response, next: NextFunction) {
-  return new Promise((resolve, reject) => {
-    pool.query(`SELECT id, raw_data FROM raw_flat_pages WHERE id=${page}`).then((val) => {
-      console.log("rowCoung:" + val.rowCount + '\n');
-      if (val.rowCount > 0) {
-        const rawData = val.rows[0]['raw_data'];
+async function processPage(page: number, res: Response, next: NextFunction) {
+  const val = await pool.query(`SELECT id, raw_data FROM raw_flat_pages WHERE id=${page}`);
+  console.log(`Processing page: ${page} select rowCount:${val.rowCount}`);
+  if (val.rowCount > 0) {
+    const rawData = val.rows[0]['raw_data'];
 
-        const listOfPromises: Promise<void>[] = [];
-        try {
-          const jsonData = JSON.parse(rawData);
-          const arrOfEstates = jsonData['_embedded']['estates'];
-          arrOfEstates.forEach((estate: {name: string, _links: any}) => {
-            const name = estate['name'];
-            const image_url = estate['_links']['images'][0]['href'];
+    const listOfPromises: Promise<void>[] = [];
+    try {
+      const jsonData = JSON.parse(rawData);
+      const arrOfEstates = jsonData['_embedded']['estates'];
+      arrOfEstates.forEach((estate: {name: string, _links: any}) => {
+        const name = estate['name'];
+        const image_url = estate['_links']['images'][0]['href'];
 
-            const insertPromise = pool.query(
-              'INSERT INTO flats (name, image_url) VALUES ($1, $2)',
-              [name, image_url]
-            ).then((val) => {
-              console.log('flat :' + name + 'inserted.' + val + '\n');
-            });
-            listOfPromises.push(insertPromise);
-          });
-        } catch (err) {
-          console.log(err);
-        }
-        Promise.allSettled(listOfPromises).then((val) => resolve(val))
-      } else {
-        reject('No pages to process ');
-      }
-    // res.send(JSON.stringify(val.rows));
-    }).catch(next);
-  });
+        const insertPromise = pool.query(
+          'INSERT INTO flats (name, source_page, image_url) VALUES ($1, $2, $3)',
+          [name, page ,image_url]
+        ).then((val) => {
+          console.log(`Flat :"${name}" inserted. SrcPage: ${page} ImgSrc: ${image_url}\n`);
+        }).catch((err) => console.error(`Error while inserting processed flat: ${name}` +
+          ` on page: ${page}`, err));
+
+        listOfPromises.push(insertPromise);
+      });
+    } catch (err) {
+      console.error(`Error while processing flat: ${name}`, err);
+    }
+    await Promise.allSettled(listOfPromises);
+  } else {
+    next('No pages to process.');
+  }
 }
 
 /**
@@ -179,8 +170,9 @@ app.post("/api/crawl", (req: Request, res: Response, next: NextFunction) => {
   console.log(`Craw request: ${JSON.stringify(req.query)}`);
 
   const page = getPageNumber(req.query);
-  crawl(page, res);
-  res.send("crawl");
+  crawl(page, res)
+    .then((val) => getStatus(req,res,next))
+    .catch(next);
 });
 
 const processingAllPagesErr = {
@@ -208,15 +200,16 @@ app.post("/api/process", (req: Request, res: Response, next: NextFunction) => {
       if (rawPageCount > 0) {
         let page = 1;
         let promises = [];
-        while (page < rawPageCount) {
+        while (page < (rawPageCount + 1)) {
           promises.push(processPage(page, res, next)
             .catch((err) => {
               console.log(`Processing all pages... ERROR page: `+page, err);
             }));
           page++;
         } // while
-        // Nofify app to cause refresh
-        Promise.allSettled(promises).then((val) => getStatus(req,res,next))
+        // Notify app to cause refresh
+        Promise.allSettled(promises)
+          .then((val) => getStatus(req,res,next));
       } else {
         res.status(500).send({
           error: 'Processing all pages: No raw pages to process'
