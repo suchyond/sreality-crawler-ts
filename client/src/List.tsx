@@ -19,20 +19,12 @@ const List: React.FunctionComponent<List.Props> = (
         </tr>
       </thead>
       <tbody>
-       { props.list.map((flat) => <tr>
+       { props.list.map((flat) => <tr key={flat.name+flat.image_url}>
             <td>{flat.name}</td>
             <td><img src={flat.image_url} alt={flat.image_url}/></td>
         </tr>)}
      </tbody>
     </Table>;
-
-{/*     return <div className="List">
-        {/*<div>Number of flats in the database: { props.list.length } </div>*/ /* TODO *//*}
-        { props.list.map((flat) => <div className="Entry">
-            <span>{flat.name}</span> <img src={flat.image_url}/>
-    </div>) } 
-        
-    </div>;*/}
 }
 
 export { List };

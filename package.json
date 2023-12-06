@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "typescript": "^4.5.4"
+  },
+  "scripts": {
+    "build:server": "cd server && tsc",
+    "build:client": "cd client && node scripts/build.js"
+  }
+}

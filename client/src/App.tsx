@@ -1,4 +1,4 @@
-import React, { Reducer, useEffect, useRef } from 'react';
+import React, { Reducer, useCallback, useEffect, useRef } from 'react';
 import './App.css';
 import { List } from './List';
 import { FlatInfo } from './flat-info';
@@ -7,13 +7,26 @@ import Pagination from 'react-bootstrap/Pagination';
 import Stack from 'react-bootstrap/Stack';
 import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
+import { CrawlStatus, CrawlerTimer } from './crawler-timer';
 
 declare namespace App {
+
+  /**
+   * Status of the application from database and back-end
+   */
+  interface Status {
+    flatCount: number;
+    rawCount: number;
+    error?: any;
+  }
+
   interface State {
     list: any[];
     entriesPerPage: number;
-    page: number;
+    displayedPage: number;
     numOfPagesToDownload: number;
+    status?: Status;
+    crawlStatus?: CrawlStatus;
   }
   type Action = {
     type: "prev" | "next",
@@ -23,7 +36,13 @@ declare namespace App {
   } | {
     type: "crawlNumOfPages",
     payload: number
-  }
+  } | {
+    type: "updateStatus",
+    payload: Status
+  } | {
+    type: "updateCrawlStatus",
+    payload: CrawlStatus
+  };
 }
 
 function App() {
@@ -35,11 +54,29 @@ function App() {
           list: action.payload
         };
       } // case
+      case "updateStatus": {
+        return {
+          ...state,
+          status: action.payload
+        };
+      } // case
+      case "crawlNumOfPages": {
+        return {
+          ...state,
+          numOfPagesToDownload: action.payload
+        };
+      } // case
+      case "updateCrawlStatus": {
+        return {
+          ...state,
+          crawlStatus: action.payload
+        };
+      } // case
       case "prev": {
-        if (state.page > 1) {
+        if (state.displayedPage > 1) {
           return {
             ...state,
-            page: state.page - 1
+            displayedPage: state.displayedPage - 1
           };
         }
         break;
@@ -47,44 +84,36 @@ function App() {
       case "next": {
         return {
           ...state,
-          page: state.page + 1
+          displayedPage: state.displayedPage + 1
         };
       } // case
     } //switch
     return state;
-  }, { list: [], entriesPerPage: 10, page: 1, numOfPagesToDownload: 1});
-  
-  const crawl = React.useCallback(() => {
-    fetch("/api/crawl", {
-      method: "POST"
-    }).then((resp) => {
-      resp.text().then((response) => {
-        console.log("response: ", response);
-      })
-    });
-  }, []);
+  }, { list: [], entriesPerPage: 10, displayedPage: 1, numOfPagesToDownload: 1 });
 
-  const processData = React.useCallback(() => {
-    fetch("/api/process", {
-      method: "POST"
-    }).then((resp) => {
-      resp.text().then((response) => {
-        console.log("response: ", response);
-      })
+  const getStatus = useCallback(() => {
+    fetch(`/api/status`).then((resp) => {
+      resp.json().then((respJson: App.Status) => {
+        if ( respJson ) {
+          dispatch({type: 'updateStatus', payload: respJson});
+        }
+      });
     });
   }, []);
 
   useEffect(() => {
-    refreshList();
-  }, [state.page, state.entriesPerPage]);
+    getStatus();
+  }, [getStatus]);
 
   const refreshList = React.useCallback(() => {
-    fetch(`/api/list?limit=${state.entriesPerPage}&offset=${((state.page - 1) * state.entriesPerPage)}`).then((resp) => {
-      resp.text().then((respTxt) => {
-        console.log("response: ", respTxt);
+    fetch(`/api/list?limit=${state.entriesPerPage}&offset=${
+        ((state.displayedPage - 1) * state.entriesPerPage)}`
+    ).then((resp) => {
+      resp.json().then((respJson) => {
+        console.log("response: ", respJson);
 
         try {
-          const respJson = JSON.parse(respTxt);
+          // const respJson = JSON.parse(respTxt);
 
           // validate
           if (Array.isArray(respJson)) {
@@ -101,12 +130,52 @@ function App() {
           }
           // {name, image_url}
         } catch (e) {
-          console.warn("response: ", respTxt);
+          console.warn("Invalid list response: ", respJson);
         }
         
       })
     });
-  }, [state.page, state.entriesPerPage]);
+  }, [state.displayedPage, state.entriesPerPage]);
+
+  useEffect(() => {
+    refreshList();
+  }, [state.displayedPage, state.entriesPerPage, refreshList]);
+  
+  const processData = React.useCallback(() => {
+    //let page = 1; // If no page is used all pages are processed
+    fetch(`/api/process`/*?page=${page}`*/, {
+      method: "POST"
+    }).then((resp) => {
+      resp.json().then((respJson: App.Status) => {
+        if ( respJson ) {
+          dispatch({type: 'updateStatus', payload: respJson});
+          refreshList();
+        }
+      });
+    });
+  }, [refreshList]);
+
+  const crawlerRef = useRef({} as {crawler?: CrawlerTimer});
+
+  const crawlAndProcess = useCallback(() => {
+    if (!crawlerRef.current.crawler) {
+      crawlerRef.current.crawler = new CrawlerTimer({
+        waitTimeMs: 2000,
+        numOfPagesToDownload: state.numOfPagesToDownload,
+        dispatch: (
+            action: {type: "updateCrawlStatus", payload: CrawlStatus}
+          ) => {
+            if (action.payload.crawlingState === 'done') {
+              processData();  
+            }
+            dispatch(action);
+          }
+      });
+    }
+    crawlerRef.current.crawler.start(state.numOfPagesToDownload);
+  }, [state.numOfPagesToDownload, processData]);
+
+
 
   return (
     <div className="App">
@@ -115,7 +184,7 @@ function App() {
         <button onClick={() => { processData(); }}>Process</button>
         <button  onClick={() => { refreshList(); }}>Show list 2</button>*/}
         <Stack direction="horizontal" gap={3} className='ActionBtns'>
-          <Button variant="primary" onClick={() => { crawl(); }}>{'1)'} Crawl</Button>
+          <Button variant="primary" onClick={() => { crawlAndProcess(); }}>Crawl and process flats</Button>
           <InputGroup className='NumOfEntriesInputGroup'>
             <InputGroup.Text>Number of entries to download:</InputGroup.Text>
             <Form.Select
@@ -131,24 +200,59 @@ function App() {
                 dispatch({type: 'crawlNumOfPages', payload: numberOfPages});
               }}
             >
-              <option>60</option>
-              <option>120</option>
-              <option>240</option>
-              <option>480</option>
-              <option>540</option>
+              {[60, 120, 240, 480, 540].map((num) => <option>{num}</option>)}
             </Form.Select>
           </InputGroup>
 
-          <Button variant="secondary" onClick={() => { processData(); }}>{'2)'} Process</Button>
-          <Button variant="secondary" onClick={() => { refreshList(); }}>{'3)'} Show list 1</Button>
+          <Button variant="secondary" size="sm" onClick={() => { processData(); }}>Process</Button>
+          <Button variant="secondary" size="sm" onClick={() => { refreshList(); }}>Refresh list</Button>
         </Stack>
 
         <Pagination className='Pagination'>
-          {state.page > 1 && (<Pagination.Prev onClick={() => { dispatch({type: 'prev'}); }}>{'<'} Previous page</Pagination.Prev>)}
+          <Pagination.Prev
+              disabled={state.displayedPage < 2}
+              onClick={() => { dispatch({type: 'prev'}); }}
+          >{'<'} Previous page</Pagination.Prev>
           {/*<span className='Pag-sep'/>*/}
-          <Pagination.Item active>{state.page}</Pagination.Item>
-          <Pagination.Next onClick={() => { dispatch({type: 'next'}); }}>Next page {'>'}</Pagination.Next>
+          <Pagination.Item active>{state.displayedPage}</Pagination.Item>
+
+          <Pagination.Next
+            disabled={!(state.status && state.status.flatCount != null && 
+              ((state.displayedPage * state.entriesPerPage)  < state.status.flatCount ))}
+            onClick={() => { dispatch({type: 'next'}); }}
+          >Next page {'>'}</Pagination.Next>
+          
         </Pagination>
+
+        <div className='Status'>Status:{(() => {
+          let statusMsg = '';
+
+          if (state.status) {
+            if (state.status.error) {
+              statusMsg += 'Error: ' + JSON.stringify(state.status.error);
+            } else {
+              if (state.status.flatCount != null) {
+                statusMsg += ' Processed flats: ' + state.status.flatCount;
+              }
+
+              if (state.status.rawCount != null) {
+                statusMsg += ' Downloaded pages: ' + state.status.rawCount;
+              }
+            }
+
+            if (state.crawlStatus && state.crawlStatus.crawlingPage) {
+              statusMsg += ' Crawling page: ' + state.crawlStatus.crawlingPage;
+            }
+
+            if (state.crawlStatus && state.crawlStatus.crawlingState) {
+              statusMsg += ' Crawling state: ' + state.crawlStatus.crawlingState;
+            }
+
+            return <span>{ statusMsg }</span>;
+            
+          }
+
+        })()}</div>
 
         <List list={state.list}/>
 
