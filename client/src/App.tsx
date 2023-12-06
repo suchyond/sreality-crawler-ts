@@ -8,18 +8,9 @@ import Stack from 'react-bootstrap/Stack';
 import Form from 'react-bootstrap/Form';
 import InputGroup from 'react-bootstrap/InputGroup';
 import { CrawlStatus, CrawlerTimer } from './crawler-timer';
+import { Status, StatusInfo } from './Status';
 
 declare namespace App {
-
-  /**
-   * Status of the application from database and back-end
-   */
-  interface Status {
-    flatCount: number;
-    rawCount: number;
-    error?: any;
-  }
-
   interface State {
     list: any[];
     entriesPerPage: number;
@@ -93,7 +84,7 @@ function App() {
 
   const getStatus = useCallback(() => {
     fetch(`/api/status`).then((resp) => {
-      resp.json().then((respJson: App.Status) => {
+      resp.json().then((respJson: Status) => {
         if ( respJson ) {
           dispatch({type: 'updateStatus', payload: respJson});
         }
@@ -113,8 +104,6 @@ function App() {
         console.log("response: ", respJson);
 
         try {
-          // const respJson = JSON.parse(respTxt);
-
           // validate
           if (Array.isArray(respJson)) {
             if (respJson.length > 0) {
@@ -133,7 +122,7 @@ function App() {
           console.warn("Invalid list response: ", respJson);
         }
         
-      })
+      }).catch(e => console.warn('Entry listing error', e));
     });
   }, [state.displayedPage, state.entriesPerPage]);
 
@@ -146,7 +135,7 @@ function App() {
     fetch(`/api/process`/*?page=${page}`*/, {
       method: "POST"
     }).then((resp) => {
-      resp.json().then((respJson: App.Status) => {
+      resp.json().then((respJson: Status) => {
         if ( respJson ) {
           dispatch({type: 'updateStatus', payload: respJson});
           refreshList();
@@ -180,9 +169,6 @@ function App() {
   return (
     <div className="App">
       <div>
-        {/*<button onClick={() => { crawl(); }}>Crawl</button>
-        <button onClick={() => { processData(); }}>Process</button>
-        <button  onClick={() => { refreshList(); }}>Show list 2</button>*/}
         <Stack direction="horizontal" gap={3} className='ActionBtns'>
           <Button variant="primary" onClick={() => { crawlAndProcess(); }}>Crawl and process flats</Button>
           <InputGroup className='NumOfEntriesInputGroup'>
@@ -204,8 +190,8 @@ function App() {
             </Form.Select>
           </InputGroup>
 
-          <Button variant="secondary" size="sm" onClick={() => { processData(); }}>Process</Button>
-          <Button variant="secondary" size="sm" onClick={() => { refreshList(); }}>Refresh list</Button>
+          <Button variant="outline-secondary" size="sm" onClick={() => { processData(); }}>Process</Button>
+          <Button variant="outline-secondary" size="sm" onClick={() => { refreshList(); }}>Refresh list</Button>
         </Stack>
 
         <Pagination className='Pagination'>
@@ -213,7 +199,7 @@ function App() {
               disabled={state.displayedPage < 2}
               onClick={() => { dispatch({type: 'prev'}); }}
           >{'<'} Previous page</Pagination.Prev>
-          {/*<span className='Pag-sep'/>*/}
+
           <Pagination.Item active>{state.displayedPage}</Pagination.Item>
 
           <Pagination.Next
@@ -224,35 +210,10 @@ function App() {
           
         </Pagination>
 
-        <div className='Status'>Status:{(() => {
-          let statusMsg = '';
-
-          if (state.status) {
-            if (state.status.error) {
-              statusMsg += 'Error: ' + JSON.stringify(state.status.error);
-            } else {
-              if (state.status.flatCount != null) {
-                statusMsg += ' Processed flats: ' + state.status.flatCount;
-              }
-
-              if (state.status.rawCount != null) {
-                statusMsg += ' Downloaded pages: ' + state.status.rawCount;
-              }
-            }
-
-            if (state.crawlStatus && state.crawlStatus.crawlingPage) {
-              statusMsg += ' Crawling page: ' + state.crawlStatus.crawlingPage;
-            }
-
-            if (state.crawlStatus && state.crawlStatus.crawlingState) {
-              statusMsg += ' Crawling state: ' + state.crawlStatus.crawlingState;
-            }
-
-            return <span>{ statusMsg }</span>;
-            
-          }
-
-        })()}</div>
+        <div className='Status'>Status:{<StatusInfo
+          status={state.status}
+          crawlStatus={state.crawlStatus}
+        />}</div>
 
         <List list={state.list}/>
 

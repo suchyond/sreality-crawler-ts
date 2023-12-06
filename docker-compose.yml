@@ -9,8 +9,8 @@ services:
     depends_on:
       - db
 # # Maps real files in repo to the container
-    volumes:
-      - .:/usr/src/app
+    # volumes:
+    #   - .:/usr/src/app
 
   db:
     container_name: postgres

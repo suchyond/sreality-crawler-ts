@@ -2,7 +2,6 @@ import express, { NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import fetch from "node-fetch";
-//import path from "path";
 
 const app = express();
 dotenv.config({path: '../.env'}); //Reads .env file and makes it accessible via process.env
