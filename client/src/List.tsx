@@ -19,10 +19,23 @@ const List: React.FunctionComponent<List.Props> = (
         </tr>
       </thead>
       <tbody>
-       { props.list.map((flat) => <tr key={flat.name+flat.image_url}>
-            <td>{flat.name}</td>
-            <td><img src={flat.image_url} alt={flat.image_url}/></td>
-        </tr>)}
+       { props.list.map((flat) => {
+        const url = flat.image_urls && flat.image_urls[0];
+
+        let formattedPrice = flat.price
+          .replaceAll(',', ' ')
+          .replace('.', ',')
+          .replace('$', 'CZK ');
+        return(
+          <tr key={flat.name + url}>
+            <td>
+              <div>{flat.name}</div>
+              <div>{flat.locality}</div>
+              <div>{formattedPrice}</div>
+            </td>
+            <td><img src={url} alt={url}/></td>
+          </tr>);
+        })}
      </tbody>
     </Table>;
 }

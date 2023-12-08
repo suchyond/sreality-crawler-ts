@@ -97,7 +97,7 @@ const getStatus = (req: Request, res: Response, next: NextFunction) => {
  app.get("/api/list", (req: Request, res: Response, next: NextFunction) => {
   const limit = req.query.limit || 10;
   const offset = req.query.offset || 0;
-  pool.query(`SELECT name, image_url FROM flats ORDER BY flats.id LIMIT ${limit} OFFSET ${offset}`).then((val) => {
+  pool.query(`SELECT name, locality, price, lat, lon, image_urls FROM flats ORDER BY flats.id LIMIT ${limit} OFFSET ${offset}`).then((val) => {
     console.log(`List flats (limit:${limit} offset:${offset}): rowCount: ${val.rowCount}`);
     res.send(val.rows);
   }).catch(next);
@@ -128,15 +128,31 @@ async function processPage(page: number, res: Response, next: NextFunction) {
     try {
       const jsonData = JSON.parse(rawData);
       const arrOfEstates = jsonData['_embedded']['estates'];
-      arrOfEstates.forEach((estate: {name: string, _links: any}) => {
+      arrOfEstates.forEach((estate: {name: string, _links: any,
+          gps: {lat: number, lon: number}, locality: string, price: number
+      }) => {
         const name = estate['name'];
-        const image_url = estate['_links']['images'][0]['href'];
+        const gps = estate['gps'];
+        const locality = estate['locality'];
+        const price = estate['price'];
+        //
+        const image_urls_raw = estate['_links']['images'];
+        const image_urls: string[] = [];
+        if (Array.isArray(image_urls_raw)) {
+          image_urls_raw.forEach((image: {href?: string}) => {
+            if(image && image.href) {
+              image_urls.push(image.href);
+            }
+          });
+        }
+        //const image_url = estate['_links']['images'][0]['href'];
 
-        const insertPromise = pool.query(
-          'INSERT INTO flats (name, source_page, image_url) VALUES ($1, $2, $3)',
-          [name, page ,image_url]
+        const insertPromise = pool.query('INSERT INTO flats (name, source_page,' +
+            ' locality, price, lat, lon, image_urls) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [name, page, locality, price, gps.lat, gps.lon ,image_urls]
         ).then((val) => {
-          console.log(`Flat :"${name}" inserted. SrcPage: ${page} ImgSrc: ${image_url}\n`);
+          console.log(`Flat :"${name}" inserted. SrcPage: ${page} Locality: ${
+              locality} Price: ${price}\n`);
         }).catch((err) => console.error(`Error while inserting processed flat: ${name}` +
           ` on page: ${page}`, err));
 
@@ -180,7 +196,7 @@ const processingAllPagesErr = {
 };
 
 app.post("/api/process", (req: Request, res: Response, next: NextFunction) => {
-  console.log(`Craw request: ${JSON.stringify(req.body)}`);
+  console.log(`Processing request: ${JSON.stringify(req.body)}`);
   if (req.query.page == null) {
     // Process all pages
     pool.query(statusSqlQuery).then((val) => {

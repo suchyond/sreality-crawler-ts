@@ -128,7 +128,7 @@ function App() {
           if (Array.isArray(respJson)) {
             if (respJson.length > 0) {
               const flatInfo: FlatInfo = respJson[0];
-              if (flatInfo.name && flatInfo.image_url) {
+              if (flatInfo.name && flatInfo.image_urls) {
                 // Valid
                 dispatch({type: "updateList", payload: respJson });
               }
