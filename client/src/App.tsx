@@ -184,6 +184,27 @@ function App() {
     crawlerRef.current.crawler.start(state.numOfPagesToDownload);
   }, [state.numOfPagesToDownload, processData]);
 
+  let flatCount: number | undefined;
+  if (state.status && state.status.flatCount != null) {
+    flatCount = state.status.flatCount;
+  }
+
+  let lastPageInPaginator: JSX.Element | null = null;
+  let ellipsisBeforeLastPageInPaginator: JSX.Element | null  = null;
+
+  const lastEntryOnPage = state.displayedPage * state.entriesPerPage;
+  if (flatCount != null && (lastEntryOnPage < flatCount)) {
+    lastPageInPaginator = (
+      <Pagination.Item>
+        {Math.ceil(state.status!.flatCount / state.entriesPerPage)}
+      </Pagination.Item>
+    );
+
+    if (lastEntryOnPage < (flatCount - 1) ) {
+      ellipsisBeforeLastPageInPaginator = (<Pagination.Ellipsis />);
+    }
+  }
+
   return (
     <div className="App">
       <div className="UpperBar">
@@ -218,11 +239,22 @@ function App() {
                 onClick={() => { dispatch({type: 'prev'}); }}
             >{'<'} Previous page</Pagination.Prev>
 
+            {state.displayedPage > 1 && (
+              <Pagination.Item>1</Pagination.Item>
+            )}
+
+            {state.displayedPage > 2 && (
+              <Pagination.Ellipsis />
+            )}
+
             <Pagination.Item active>{state.displayedPage}</Pagination.Item>
 
+            {ellipsisBeforeLastPageInPaginator}
+            {lastPageInPaginator}
+
             <Pagination.Next
-              disabled={!(state.status && state.status.flatCount != null && 
-                ((state.displayedPage * state.entriesPerPage)  < state.status.flatCount ))}
+              disabled={!(flatCount != null && 
+                ((state.displayedPage * state.entriesPerPage)  < flatCount ))}
               onClick={() => { dispatch({type: 'next'}); }}
             >Next page {'>'}</Pagination.Next>
           </Pagination>
