@@ -53,6 +53,10 @@ function initializeDbIfNeeded() {
           id SERIAL PRIMARY KEY,
           name text,
           source_page integer,
+          price money,
+          lat double precision,
+          lon double precision,
+          image_urls text[],
           image_url text
         );
         CREATE TABLE public.raw_flat_pages (
