@@ -53,6 +53,7 @@ function initializeDbIfNeeded() {
           id SERIAL PRIMARY KEY,
           name text,
           source_page integer,
+          locality text,
           price money,
           lat double precision,
           lon double precision,
